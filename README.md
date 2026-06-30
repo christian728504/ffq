@@ -115,9 +115,9 @@ $ ffq -l 3 GSE115469
 ```
 ### Fetch only raw data links from the host of your choice and display it in the terminal
 
-#### FTP host
+#### HTTPS host
 ```
-ffq --ftp [accession(s)]
+ffq --https [accession(s)]
 ```
 where `[accession(s)]` is either a single accession or a space-delimited list of accessions.
 
@@ -139,8 +139,8 @@ ffq --ncbi [accession(s)]
 ##### Examples:
 
 ```bash
-# FTP with an SRR
-$ ffq --ftp SRR10668798
+# HTTPS with an SRR
+$ ffq --https SRR10668798
 [
     {
         "accession": "SRR10668798",
@@ -150,12 +150,12 @@ $ ffq --ftp SRR10668798
         "filenumber": 1,
         "md5": "bf8078b5a9cc62b0fee98059f5b87fa7",
         "urltype": "ftp",
-        "url": "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR106/098/SRR10668798/SRR10668798_1.fastq.gz"
+        "url": "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR106/098/SRR10668798/SRR10668798_1.fastq.gz"
     },
 ...
 
-# FTP with a GSE
-$ ffq --ftp GSE115469
+# HTTPS with a GSE
+$ ffq --https GSE115469
 [
     {
         "accession": "SRR7276474",
@@ -165,7 +165,7 @@ $ ffq --ftp GSE115469
         "filenumber": 1,
         "md5": "d0fde6bf21d9f97bdf349a3d6f0a8787",
         "urltype": "ftp",
-        "url": "ftp://ftp.sra.ebi.ac.uk/vol1/SRA716/SRA716608/bam/P1TLH.bam"
+        "url": "https://ftp.sra.ebi.ac.uk/vol1/SRA716/SRA716608/bam/P1TLH.bam"
     },
 ...
 
@@ -252,7 +252,7 @@ By default, [`cURL`](https://curl.se/) is installed on most computers and can be
 
 ```bash
 # Obtain FTP links
-$ ffq --ftp SRR10668798
+$ ffq --https SRR10668798
 [
     {
         "accession": "SRR10668798",
@@ -284,12 +284,12 @@ $ curl -O ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR106/098/SRR10668798/SRR10668798_
 Alternatively, the `url`s can be extracted from the json output with [`jq`](https://stedolan.github.io/jq/) and then piped into [`cURL`](https://curl.se/).
 
 ```bash
-$ ffq --ftp SRR10668798 | jq -r '.[] | .url' | xargs curl -O
+$ ffq --https SRR10668798 | jq -r '.[] | .url' | xargs curl -O
 ```
 
 If you don't have `jq` installed, you can use the default program [`grep`](https://linux.die.net/man/1/grep).
 ```bash
-$ ffq --ftp SRR10668798 | grep -Eo '"url": "[^"]*"' | grep -o '"[^"]*"$' | xargs curl -O
+$ ffq --https SRR10668798 | grep -Eo '"url": "[^"]*"' | grep -o '"[^"]*"$' | xargs curl -O
 ```
 
 #### AWS
@@ -328,7 +328,7 @@ The following was submitted by [@sbooeshaghi](https://github.com/sbooeshaghi/).
 # Goal: quantify publicly available scRNAseq data
 $ pip install kb-python gget ffq
 $ kb ref -i index.idx -g t2g.txt -f1 transcriptome.fa $(gget ref --ftp -w dna,gtf homo_sapiens)
-$ kb count -i index.idx -g t2g.txt -x 10xv3 -o out $(ffq --ftp SRR10668798 | jq -r '.[] | .url' | tr '\n' ' ')
+$ kb count -i index.idx -g t2g.txt -x 10xv3 -o out $(ffq --https SRR10668798 | jq -r '.[] | .url' | tr '\n' ' ')
 # -> count matrix in out/ folder
 
 # Goal: count the total number of reads
@@ -336,15 +336,15 @@ $ ffq SRR10668798 | jq '.. | ."ENA-SPOT-COUNT"? | select(. != null)' |  paste -s
 624886427
 
 # Goal: check the total size of the FASTQ files
-$ ffq --ftp SRR10668798 | jq '.[] | .filesize ' | paste -sd+ - | bc | numfmt --to=iec-i --suffix=B
+$ ffq --https SRR10668798 | jq '.[] | .filesize ' | paste -sd+ - | bc | numfmt --to=iec-i --suffix=B
 71GiB
 
 # Goal: count the number of FASTQ files
-$ ffq --ftp SRR10668798 | jq -r 'length'
+$ ffq --https SRR10668798 | jq -r 'length'
 2
 
 # Goal: get sequence stats for the first 100 entries with seqkit
-$ curl -s $(ffq --ftp SRR10668798 | jq -r '.[0] | .url') | zcat | head -400 | seqkit stats -a
+$ curl -s $(ffq --https SRR10668798 | jq -r '.[0] | .url') | zcat | head -400 | seqkit stats -a
 file  format  type  num_seqs  sum_len  min_len  avg_len  max_len  Q1  Q2  Q3  sum_gap  N50  Q20(%)  Q30(%)
 -     FASTQ   DNA        100    2,600       26       26       26  13  26  13        0   26   95.31   92.92
 ```
@@ -352,13 +352,13 @@ file  format  type  num_seqs  sum_len  min_len  avg_len  max_len  Q1  Q2  Q3  su
 The following was submitted by [@agalvezm](https://github.com/agalvezm/).
 ```bash
 # Goal: print the first 3 sequences of read 1 to the screen
-$ curl -s $(ffq --ftp SRR10668798 | jq -r '.[0] | .url') | zcat | awk '(NR-2)%4==0' | head -n
+$ curl -s $(ffq --https SRR10668798 | jq -r '.[0] | .url') | zcat | awk '(NR-2)%4==0' | head -n
 NCCAAATAGGAATTACATACACCCCC
 NAACCTGAGTAGATGTGTTGTTAACT
 NGATCTGAGAACTCGGAACTATTTTC
 
 # Goal: get number of counts per unique read sequence from the first 10000 reads
-$ curl -s $(ffq --ftp accession | jq -r '.[0] | .url') | zcat | awk '(NR-2)%4==0'| head -n 10000 | sort | uniq -c | sort -r
+$ curl -s $(ffq --https accession | jq -r '.[0] | .url') | zcat | awk '(NR-2)%4==0'| head -n 10000 | sort | uniq -c | sort -r
 4 TACACGACACTTAACGATCGGCCTTC
 4 GTACTTTAGGCCCGTTTGTGTGCGAT
 4 GACGGCTAGTACATGATATAACAAGC

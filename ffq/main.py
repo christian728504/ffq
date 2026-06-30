@@ -117,7 +117,7 @@ def main():
         type=int,
     )
 
-    parser.add_argument("--ftp", help="Return FTP links", action="store_true")
+    parser.add_argument("--https", help="Return HTTPS links", action="store_true")
 
     parser.add_argument("--aws", help="Return AWS links", action="store_true")  # noqa
 
@@ -167,7 +167,7 @@ def run_ffq(args):
         raise CliError("`-o` must be provided when using `--split`")
 
     if args.l:
-        if ([args.ftp, args.ncbi, args.gcp, args.aws]).count(True) > 0:
+        if ([args.https, args.ncbi, args.gcp, args.aws]).count(True) > 0:
             raise CliError("`-l` is not compatible with link fetching.")
         if args.l <= 0:  # noqa
             raise CliError("level `-l` must greater than zero")
@@ -188,7 +188,7 @@ def run_ffq(args):
             )
         if (
             v["prefix"] in ENCODE_TYPES
-            and ([args.ftp, args.aws, args.gcp, args.ncbi]).count(True) > 0
+            and ([args.https, args.aws, args.gcp, args.ncbi]).count(True) > 0
         ):
             raise CliError(
                 "Direct link fetching is currently not compatible with ENCODE accessions"
@@ -201,7 +201,9 @@ def run_ffq(args):
     # we want to associate the args.x with the name of X
     # not just the true/false associated with args.x
     url_args = [
-        {"urltype": "ftp", "arg": args.ftp},
+        # "ftp" is the internal key for EBI/NCBI-hosted files; --https selects
+        # them but emits HTTPS links (see the scheme rewrite below).
+        {"urltype": "ftp", "arg": args.https},
         {"urltype": "aws", "arg": args.aws},
         {"urltype": "gcp", "arg": args.gcp},
         {"urltype": "ncbi", "arg": args.ncbi},
@@ -228,13 +230,17 @@ def run_ffq(args):
                     # get run files
                     found_links = []
                     findkey(keyed, v["urltype"], found_links)
-                    links += found_links
 
-                    # get supplementary
                     if v["urltype"] == "ftp":
-                        found_links = []
+                        # get supplementary (GEO files are FTP-hosted too)
                         findkey(keyed, "supplementary_files", found_links)
-                        links += found_links
+                        # EBI and NCBI serve these same paths over HTTPS, so
+                        # emit usable HTTPS links where outbound FTP is blocked.
+                        for link in found_links:
+                            link["url"] = "https://" + link["url"].removeprefix(
+                                "ftp://"
+                            )
+                    links += found_links
             keyed = links
 
     except Exception as e:

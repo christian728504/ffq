@@ -679,3 +679,51 @@ class TestFfq(TestMixin, TestCase):
             # Test the output JSON file
             file_json = json.load(open(os.path.join(tempdir, "SRR1581006.json")))
             self.assertEqual(file_json["accession"], "SRR1581006")
+
+    def test_https_links(self):
+        # --https selects the FTP-mirror files (run files and GEO supplementary
+        # files) but rewrites the scheme so the emitted links use HTTPS, which
+        # EBI and NCBI serve from the same paths.
+        import json
+
+        fake_result = {
+            "accession": "GSE1",
+            "files": {
+                "ftp": [
+                    {
+                        "accession": "SRR1",
+                        "filename": "SRR1_1.fastq.gz",
+                        "urltype": "ftp",
+                        "url": "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR1/SRR1_1.fastq.gz",
+                    }
+                ],
+                "aws": [],
+                "gcp": [],
+                "ncbi": [],
+            },
+            "supplementary_files": [
+                {
+                    "accession": "GSE1",
+                    "filename": "GSE1_RAW.tar",
+                    "urltype": "ftp",
+                    "url": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE1nnn/GSE1/suppl/GSE1_RAW.tar",
+                }
+            ],
+        }
+        with patch("sys.argv", ["main", "--https", "GSE1"]), mock.patch.dict(
+            "ffq.main.FFQ", {"GSE": lambda accession, level: fake_result}
+        ):
+            out = StringIO()
+            sys.stdout = out
+            try:
+                main()
+            finally:
+                sys.stdout = sys.__stdout__
+        links = json.loads(out.getvalue())
+        self.assertEqual(
+            [
+                "https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR1/SRR1_1.fastq.gz",
+                "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE1nnn/GSE1/suppl/GSE1_RAW.tar",
+            ],
+            [link["url"] for link in links],
+        )
