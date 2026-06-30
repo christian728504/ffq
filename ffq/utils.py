@@ -4,7 +4,6 @@ import time
 from functools import lru_cache
 
 import requests
-from ftplib import FTP
 from bs4 import BeautifulSoup
 from frozendict import frozendict
 import logging
@@ -778,33 +777,35 @@ def geo_to_suppl(accession, GEO):
         link = FTP_GEO_SAMPLE
     elif GEO == "GSE":
         link = FTP_GEO_SERIES
-    ftp = FTP(FTP_GEO_URL)
-    ftp.login()
     path = f"{link}{accession[:-3]}nnn/{accession}{FTP_GEO_SUPPL}"
-    try:
-        files = ftp.mlsd(path)
-    except:  # noqa
+    response = requests.get(f"https://{FTP_GEO_URL}{path}")
+    # A missing suppl directory (404) simply means there are no supplementary
+    # files for this accession, which is common and not an error.
+    if not response.ok:
         return []
-    try:
-        supp = []
-        idx = 0
-        for entry in files:
-            if entry[1].get("type") == "file":
-                idx += 1
-                supp.append(
-                    {
-                        "accession": accession,
-                        "filename": entry[0],  # TODO maybe add to other link objects?
-                        "filetype": None,  # TODO, get
-                        "filesize": int(entry[1].get("size")),
-                        "filenumber": idx,
-                        "md5": None,
-                        "urltype": "ftp",
-                        "url": f"ftp://{FTP_GEO_URL}{path}{entry[0]}",
-                    }
-                )
-    except:  # noqa
-        return []
+    soup = BeautifulSoup(response.text, "html.parser")
+    supp = []
+    for anchor in soup.find_all("a"):
+        href = anchor.get("href", "")
+        # The directory index links to its own files by bare name; parent and
+        # external links are absolute, and subdirectories end with a slash.
+        if not href or href.startswith(("/", "http")) or href.endswith("/"):
+            continue
+        size = requests.head(f"https://{FTP_GEO_URL}{path}{href}").headers.get(
+            "Content-Length"
+        )
+        supp.append(
+            {
+                "accession": accession,
+                "filename": href,
+                "filetype": None,
+                "filesize": int(size) if size else None,
+                "filenumber": len(supp) + 1,
+                "md5": None,
+                "urltype": "ftp",
+                "url": f"ftp://{FTP_GEO_URL}{path}{href}",
+            }
+        )
     return supp
 
 

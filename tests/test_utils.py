@@ -381,46 +381,80 @@ class TestUtils(TestMixin, TestCase):
         )
 
     def test_geo_to_suppl(self):
-        self.assertEqual(
-            [
-                {
-                    "accession": "GSM12345",
-                    "filename": "GSM12345.CEL.gz",
-                    "filetype": None,
-                    "filesize": 2964920,
-                    "filenumber": 1,
-                    "md5": None,
-                    "urltype": "ftp",
-                    "url": "ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM12nnn/GSM12345/suppl/GSM12345.CEL.gz",
-                }
-            ],
-            utils.geo_to_suppl("GSM12345", "GSM"),
-        )
-        self.assertEqual(
-            [
-                {
-                    "accession": "GSE102592",
-                    "filename": "filelist.txt",
-                    "filetype": None,
-                    "filesize": 697,
-                    "filenumber": 1,
-                    "md5": None,
-                    "urltype": "ftp",
-                    "url": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE102nnn/GSE102592/suppl/filelist.txt",
-                },
-                {
-                    "accession": "GSE102592",
-                    "filename": "GSE102592_RAW.tar",
-                    "filetype": None,
-                    "filesize": 176916480,
-                    "filenumber": 2,
-                    "md5": None,
-                    "urltype": "ftp",
-                    "url": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE102nnn/GSE102592/suppl/GSE102592_RAW.tar",
-                },
-            ],
-            utils.geo_to_suppl("GSE102592", "GSE"),
-        )
+        # The directory index is fetched over HTTPS and exact file sizes come
+        # from each file's Content-Length, so both layers are mocked here.
+        sizes = {
+            "GSM12345.CEL.gz": "2964920",
+            "GSE102592_RAW.tar": "176916480",
+            "filelist.txt": "285",
+        }
+
+        def head(url):
+            return mock.Mock(headers={"Content-Length": sizes[url.rsplit("/", 1)[-1]]})
+
+        gsm_index = """<html><body><pre>
+        <a href="/geo/samples/GSM12nnn/GSM12345/">Parent Directory</a>
+        <a href="GSM12345.CEL.gz">GSM12345.CEL.gz</a>  2004-05-14 11:07  2.8M
+        </pre><a href="https://www.hhs.gov/">HHS Vulnerability Disclosure</a></body></html>"""
+        with mock.patch(
+            "ffq.utils.requests.get", return_value=mock.Mock(ok=True, text=gsm_index)
+        ) as get, mock.patch("ffq.utils.requests.head", side_effect=head):
+            self.assertEqual(
+                [
+                    {
+                        "accession": "GSM12345",
+                        "filename": "GSM12345.CEL.gz",
+                        "filetype": None,
+                        "filesize": 2964920,
+                        "filenumber": 1,
+                        "md5": None,
+                        "urltype": "ftp",
+                        "url": "ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM12nnn/GSM12345/suppl/GSM12345.CEL.gz",
+                    }
+                ],
+                utils.geo_to_suppl("GSM12345", "GSM"),
+            )
+            get.assert_called_once_with(
+                "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM12nnn/GSM12345/suppl/"
+            )
+
+        gse_index = """<html><body><pre>
+        <a href="/geo/series/GSE102nnn/GSE102592/">Parent Directory</a>
+        <a href="GSE102592_RAW.tar">GSE102592_RAW.tar</a>  2021-07-24 09:18  169M
+        <a href="filelist.txt">filelist.txt</a>  2018-08-09 11:04  285
+        </pre><a href="https://www.hhs.gov/">HHS Vulnerability Disclosure</a></body></html>"""
+        with mock.patch(
+            "ffq.utils.requests.get", return_value=mock.Mock(ok=True, text=gse_index)
+        ), mock.patch("ffq.utils.requests.head", side_effect=head):
+            self.assertEqual(
+                [
+                    {
+                        "accession": "GSE102592",
+                        "filename": "GSE102592_RAW.tar",
+                        "filetype": None,
+                        "filesize": 176916480,
+                        "filenumber": 1,
+                        "md5": None,
+                        "urltype": "ftp",
+                        "url": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE102nnn/GSE102592/suppl/GSE102592_RAW.tar",
+                    },
+                    {
+                        "accession": "GSE102592",
+                        "filename": "filelist.txt",
+                        "filetype": None,
+                        "filesize": 285,
+                        "filenumber": 2,
+                        "md5": None,
+                        "urltype": "ftp",
+                        "url": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE102nnn/GSE102592/suppl/filelist.txt",
+                    },
+                ],
+                utils.geo_to_suppl("GSE102592", "GSE"),
+            )
+
+        # A missing suppl directory (404) means no supplementary files.
+        with mock.patch("ffq.utils.requests.get", return_value=mock.Mock(ok=False)):
+            self.assertEqual([], utils.geo_to_suppl("GSM0000000", "GSM"))
 
     def test_gsm_to_platform(self):
         accession = "GSM2928379"
