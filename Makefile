@@ -10,14 +10,14 @@ DOI1 = 10.1038/s41467-019-08831-9
 DOI2 = 10.1016/j.immuni.2019.06.027
 
 test:
-	nosetests --verbose --with-coverage --cover-package ffq
+	uv run coverage run -m pytest --verbose && uv run coverage report -m
 
 check:
-	flake8 ffq && echo OK
-	black --check ffq/ && echo OK
+	uv run ruff check ffq && echo OK
+	uv run ruff format --check ffq && echo OK
 
 examples:
-	pip install .
+	uv pip install .
 	ffq -o examples/srr_single.json $(SRR1)
 	ffq -o examples/srr_multiple.json $(SRR1) $(SRR2)
 	ffq -o examples/srr_split --split $(SRR1) $(SRR2)
@@ -32,7 +32,7 @@ examples:
 	ffq -o examples/doi_split -t DOI --split $(DOI1) $(DOI2)
 
 build:
-	python setup.py sdist bdist_wheel
+	uv build
 
 clean:
 	rm -rf build
@@ -42,13 +42,13 @@ clean:
 	rm -rf docs/api
 
 bump_patch:
-	bumpversion patch
+	uv run bump-my-version bump patch
 
 bump_minor:
-	bumpversion minor
+	uv run bump-my-version bump minor
 
 bump_major:
-	bumpversion major
+	uv run bump-my-version bump major
 
 push_release:
 	git push && git push --tags

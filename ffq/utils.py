@@ -151,7 +151,7 @@ def get_samples_from_study(accession):
     :rtype: list
     """
     soup = get_xml(accession)
-    samples_parsed = soup.find("ID", text=SAMPLE_PARSER)
+    samples_parsed = soup.find("ID", string=SAMPLE_PARSER)
     samples = []
     if samples_parsed:
         samples_ranges = samples_parsed.text.split(",")
@@ -175,7 +175,7 @@ def get_samples_from_study(accession):
             #         break
             soup = ena_fetch(srx, "sra")
             time.sleep(0.5)
-            samples.append(soup.find("primary_id", text=SAMPLE_PARSER).text)
+            samples.append(soup.find("primary_id", string=SAMPLE_PARSER).text)
 
     if not samples:
         logger.warning("No samples found for study")
@@ -663,7 +663,7 @@ def geo_id_to_srps(id):
 
     # No SRA relation was found, but all GSEs have linked bioproject, so
     # search for that instead.
-    bioproject_ids = ncbi_search("bioproject", f'{data["bioproject"]}[PRJA]')
+    bioproject_ids = ncbi_search("bioproject", f"{data['bioproject']}[PRJA]")
     assert len(bioproject_ids) == 1
     bioproject_id = bioproject_ids[0]
 
@@ -698,7 +698,7 @@ def gsm_id_to_srs(id):
             try:
                 soup = get_xml(srx)
                 sample = soup.find(
-                    re.compile(r"PRIMARY_ID|ID"), text=SAMPLE_PARSER
+                    re.compile(r"PRIMARY_ID|ID"), string=SAMPLE_PARSER
                 ).text
             except:  # noqa
                 logger.warning("No sample found")
@@ -864,7 +864,7 @@ def gsm_to_srx(accession):
 
 def srp_to_srx(accession):
     soup = get_xml(accession)
-    experiments_parsed = soup.find("ID", text=EXPERIMENT_PARSER)
+    experiments_parsed = soup.find("ID", string=EXPERIMENT_PARSER)
     experiments = []
     if experiments_parsed:
         experiments_ranges = experiments_parsed.text.split(",")
@@ -892,7 +892,7 @@ def srs_to_srx(accession):
     :rtype: list
     """
     soup = get_xml(accession)
-    return soup.find("ID", text=EXPERIMENT_PARSER).text
+    return soup.find("ID", string=EXPERIMENT_PARSER).text
 
 
 def srx_to_srrs(accession):
@@ -905,7 +905,7 @@ def srx_to_srrs(accession):
     """
     soup = get_xml(accession)
     runs = []
-    run_parsed = soup.find("ID", text=RUN_PARSER)
+    run_parsed = soup.find("ID", string=RUN_PARSER)
     if run_parsed:
         run_ranges = run_parsed.text.split(",")
         for run_range in run_ranges:
@@ -938,7 +938,7 @@ def get_files_metadata_from_run(soup):
     :return: a list files metadata dictionaries
     :rtype: list
     """
-    accession = soup.find("PRIMARY_ID", text=RUN_PARSER).text
+    accession = soup.find("PRIMARY_ID", string=RUN_PARSER).text
     files = []
     # Get FASTQs if available
     for xref in soup.find_all("XREF_LINK"):

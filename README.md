@@ -397,9 +397,9 @@ Please make all Pull Requests against the `devel` branch and include a message d
 
 Some tips for improving the `ffq` code base:
 
-- the developer dependencies can be installed with `pip install -r dev-requirements.txt`
+- the developer environment can be set up with `uv sync`
 - unit tests can be added to the `./tests/test_*.py`
-- code reformatting can be performed by running `black ffq/`
+- code reformatting can be performed by running `uv run ruff format ffq/`
 - code quality can be checked by running `make check`
 - tests can be performed by running `make test`
 

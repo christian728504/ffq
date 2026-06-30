@@ -44,7 +44,7 @@ RUN_PARSER = re.compile(r"(SRR.+)|(ERR.+)|(DRR.+)")
 EXPERIMENT_PARSER = re.compile(r"(SRX.+)|(ERX.+)|(DRX.+)")
 PROJECT_PARSER = re.compile(r"(SRP.+)|(ERP.+)|(DRP.+)")
 SAMPLE_PARSER = re.compile(r"(SRS.+)|(ERS.+)|(DRS.+)")
-DOI_PARSER = re.compile("^10.\d{4,9}\/[-._;()\/:A-Z0-9]+")  # noqa
+DOI_PARSER = re.compile(r"^10.\d{4,9}\/[-._;()\/:A-Z0-9]+")
 
 
 # TODO evenetually create an accession class
@@ -91,14 +91,14 @@ def parse_run(soup):
     :return: a dictionary containing run information
     :rtype: dict
     """
-    accession = soup.find("PRIMARY_ID", text=RUN_PARSER).text
+    accession = soup.find("PRIMARY_ID", string=RUN_PARSER).text
     experiment = (
-        soup.find("PRIMARY_ID", text=EXPERIMENT_PARSER).text
-        if soup.find("PRIMARY_ID", text=EXPERIMENT_PARSER)
+        soup.find("PRIMARY_ID", string=EXPERIMENT_PARSER).text
+        if soup.find("PRIMARY_ID", string=EXPERIMENT_PARSER)
         else soup.find("EXPERIMENT_REF")["accession"]
     )
 
-    study_parsed = soup.find("ID", text=PROJECT_PARSER)
+    study_parsed = soup.find("ID", string=PROJECT_PARSER)
     if study_parsed:
         study = study_parsed.text
     else:
@@ -107,7 +107,7 @@ def parse_run(soup):
         #         'ENA search...'
         #     )
         study = search_ena_run_study(accession)
-    sample_parsed = soup.find("ID", text=SAMPLE_PARSER)
+    sample_parsed = soup.find("ID", string=SAMPLE_PARSER)
     if sample_parsed:
         sample = sample_parsed.text
     else:
@@ -228,7 +228,7 @@ def parse_sample(soup):
     :return: a dictionary containing sample information
     :rtype: dict
     """
-    accession = soup.find("PRIMARY_ID", text=SAMPLE_PARSER).text
+    accession = soup.find("PRIMARY_ID", string=SAMPLE_PARSER).text
     title = soup.find("TITLE").text
     organism = soup.find("SCIENTIFIC_NAME").text
     sample_attribute = soup.find_all("SAMPLE_ATTRIBUTE")
@@ -245,9 +245,8 @@ def parse_sample(soup):
         except:  # noqa
             pass
     try:
-
         experiment = soup.find(
-            re.compile(r"PRIMARY_ID|ID"), text=EXPERIMENT_PARSER
+            re.compile(r"PRIMARY_ID|ID"), string=EXPERIMENT_PARSER
         ).text
         # try:
         #     experiment = soup.find('ID', text=EXPERIMENT_PARSER).text
@@ -293,7 +292,7 @@ def parse_experiment_with_run(soup, level):
     :return: a dictionary containing experiment information
     :rtype: dict
     """
-    accession = soup.find("PRIMARY_ID", text=EXPERIMENT_PARSER).text
+    accession = soup.find("PRIMARY_ID", string=EXPERIMENT_PARSER).text
     title = soup.find("TITLE").text
     platform = soup.find("INSTRUMENT_MODEL").find_parent().name
     instrument = soup.find("INSTRUMENT_MODEL").text
@@ -331,7 +330,7 @@ def parse_study(soup):
     :return: a dictionary containing study information
     :rtype: dict
     """
-    accession = soup.find("PRIMARY_ID", text=PROJECT_PARSER).text
+    accession = soup.find("PRIMARY_ID", string=PROJECT_PARSER).text
     title = soup.find("STUDY_TITLE").text
     abstract = soup.find("STUDY_ABSTRACT").text if soup.find("STUDY_ABSTRACT") else ""
     return {"accession": accession, "title": title, "abstract": abstract}
@@ -669,21 +668,21 @@ def ffq_doi(doi, level=0):  # noqa
 
     if study_accessions:
         logger.info(
-            f'Found {len(study_accessions)} studies that match this title: {", ".join(study_accessions)}'
+            f"Found {len(study_accessions)} studies that match this title: {', '.join(study_accessions)}"
         )
         return [ffq_study(accession, None) for accession in study_accessions]
 
     # If not study with the title is found, search Pubmed, which can be linked
     # to a GEO accession.
     logger.warning(
-        ("No studies found with the given title. " f"Searching Pubmed for DOI '{doi}'")
+        (f"No studies found with the given title. Searching Pubmed for DOI '{doi}'")
     )
     pubmed_ids = ncbi_search("pubmed", doi)
 
     if not pubmed_ids:
         raise Exception("No Pubmed records match the DOI")
     if len(pubmed_ids) > 1:
-        raise Exception(f'{len(pubmed_ids)} match the DOI: {", ".join(pubmed_ids)}')
+        raise Exception(f"{len(pubmed_ids)} match the DOI: {', '.join(pubmed_ids)}")
 
     pubmed_id = pubmed_ids[0]
     logger.info(f"Searching for GEO record linked to Pubmed ID '{pubmed_id}'")
@@ -691,7 +690,7 @@ def ffq_doi(doi, level=0):  # noqa
     if geo_ids:
         # Convert these geo ids to GSE accessions
         gses = geo_ids_to_gses(geo_ids)
-        logger.info(f'Found {len(gses)} GEO Accessions: {", ".join(gses)}')
+        logger.info(f"Found {len(gses)} GEO Accessions: {', '.join(gses)}")
         if len(gses) != len(geo_ids):
             raise Exception(
                 (

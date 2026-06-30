@@ -79,10 +79,8 @@ def main():
     # Main parser
     parser = argparse.ArgumentParser(
         description=(
-            (
-                f"ffq {__version__}: A command line tool to find sequencing data "
-                "from SRA / GEO / ENCODE / ENA / EBI-EMBL / DDBJ / Biosample."
-            )
+            f"ffq {__version__}: A command line tool to find sequencing data "
+            "from SRA / GEO / ENCODE / ENA / EBI-EMBL / DDBJ / Biosample."
         )
     )
     parser._actions[0].help = parser._actions[0].help.capitalize()
